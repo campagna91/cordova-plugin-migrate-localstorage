@@ -1,4 +1,10 @@
+#import <Cordova/CDV.h>
+#import <Cordova/NSDictionary+CordovaPreferences.h>
 #import "MigrateLocalStorage.h"
+
+#define SETTING_TARGET_PORT_NUMBER @"WKPort"
+#define SETTING_TARGET_HOSTNAME @"Hostname"
+#define SETTING_TARGET_SCHEME @"iosScheme"
 
 @implementation MigrateLocalStorage
 
@@ -44,19 +50,28 @@
     NSString* target = [[NSString alloc] initWithString: [appLibraryFolder stringByAppendingPathComponent:@"WebKit"]];
 
 #if TARGET_IPHONE_SIMULATOR
+    NSLog(@"STORAGE-MIGRATION: Current environment appear to be a simulator");
     // the simulutor squeezes the bundle id into the path
     NSString* bundleIdentifier = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleIdentifier"];
     target = [target stringByAppendingPathComponent:bundleIdentifier];
+#else
+    NSLog(@"STORAGE-MIGRATION: Running migration on a real device");
 #endif
 
-    target = [target stringByAppendingPathComponent:@"WebsiteData/LocalStorage/file__0.localstorage"];
+    target = [target stringByAppendingPathComponent:@"WebsiteData/LocalStorage/"];
+    target = [target stringByAppendingString:SETTING_TARGET_SCHEME];
+    target = [target stringByAppendingString:@"://"];
+    target = [target stringByAppendingString:SETTING_TARGET_HOSTNAME];
+    target = [target stringByAppendingString:@"_0.localstorage"];
 
     // Only copy data if no existing localstorage data exists yet for wkwebview
     if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
-        NSLog(@"No existing localstorage data found for WKWebView. Migrating data from UIWebView");
+        NSLog(@"STORAGE-MIGRATION: No existing localstorage data found for WKWebView. Migrating data from UIWebView");
         [self copyFrom:original to:target];
         [self copyFrom:[original stringByAppendingString:@"-shm"] to:[target stringByAppendingString:@"-shm"]];
         [self copyFrom:[original stringByAppendingString:@"-wal"] to:[target stringByAppendingString:@"-wal"]];
+    } else {
+        NSLog(@"STORAGE-MIGRATION: A storage is currently present on device. Skip copy");
     }
 }
 
